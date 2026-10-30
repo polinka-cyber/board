@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>სკოლის ინფორმერი - Smart School Display</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+GO:wght@400;500;600;700;800&display=swap');
+    
+    * {
+      font-family: 'Fira GO', sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .theme-emerald {
+      --primary: #00a884;
+      --primary-dark: #008f70;
+      --primary-light: #e6f7f3;
+      --accent: #10b981;
+    }
+
+    .theme-blue {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --accent: #3b82f6;
+    }
+
+    .theme-purple {
+      --primary: #7c3aed;
+      --primary-dark: #6d28d9;
+      --primary-light: #f5f3ff;
+      --accent: #8b5cf6;
+    }
+
+    .theme-crimson {
+      --primary: #dc2626;
+      --primary-dark: #b91c1c;
+      --primary-light: #fef2f2;
+      --accent: #ef4444;
+    }
+
+    .theme-dark {
+      --primary: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --primary-light: #1e293b;
+      --accent: #60a5fa;
+    }
+
+    .bg-main-primary { background-color: var(--primary); }
+    .bg-main-light { background-color: var(--primary-light); }
+    .text-main-primary { color: var(--primary); }
+    .border-main-primary { border-color: var(--primary); }
+
+    .active-card {
+      background-color: var(--primary);
+      color: white !important;
+      transform: scale(1.02);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+    }
+
+    .active-card * {
+      color: white !important;
+    }
+
+    .progress-bar-fill {
+      background-color: var(--primary);
+      transition: width 1s linear;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 h-screen w-screen flex flex-col theme-emerald transition-colors duration-300" id="appBody">
+
+  <!-- TOP HEADER -->
+  <header class="bg-white px-8 py-3 shadow-md flex justify-between items-center z-10 border-b border-slate-200">
+    <div class="flex items-center gap-4">
+      <div id="schoolLogoContainer" class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm">
+        <i class="fa-solid fa-school text-2xl text-main-primary" id="logoFallback"></i>
+        <img id="schoolLogoImg" class="w-full h-full object-cover hidden" alt="School Logo" />
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-800 tracking-wide" id="schoolTitle">1-ლი საჯარო სკოლა</h1>
+        <p class="text-xs text-slate-500 font-semibold" id="schoolSubtitle">საინფორმაციო მონიტორი</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-6">
+      <div class="text-right">
+        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">მიმდინარე დრო</div>
+        <div class="text-2xl font-black text-slate-800 font-mono tracking-tight" id="headerClock">00:00:00</div>
+      </div>
+      <button onclick="toggleAdminModal()" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition shadow-sm">
+        <i class="fa-solid fa-gear text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT (DYNAMIC REVERSE SUPPORT) -->
+  <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden" id="mainContainer">
+
+    <!-- LEFT COLUMN: SLIDER & QR -->
+    <section class="col-span-7 flex flex-col gap-6 h-full overflow-hidden" id="leftSection">
+      <!-- MAIN CAROUSEL CARD -->
+      <div class="flex-1 bg-white rounded-3xl shadow-lg border border-slate-200/80 p-6 flex flex-col relative overflow-hidden">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-bullhorn text-main-primary text-xl"></i>
+            <h2 class="text-xl font-bold text-slate-800">განცხადებები</h2>
+          </div>
+          <div class="flex gap-1.5" id="sliderDots"></div>
+        </div>
+
+        <!-- SLIDE CONTENT CONTAINER -->
+        <div class="flex-1 relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-100">
+          <div id="slidesWrapper" class="h-full w-full">
+            <!-- Slide dynamic content generated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- QR CODE BANNER -->
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200/80 p-4 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="p-2 bg-slate-50 rounded-xl border border-slate-200">
+            <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://school.ge" class="w-16 h-16 object-contain" alt="QR Code" />
+          </div>
+          <div>
+            <span class="text-xs font-bold text-main-primary uppercase tracking-wider">მობილური ვერსია</span>
+            <h3 class="text-base font-bold text-slate-800">დაასკანერეთ QR კოდი</h3>
+            <p class="text-xs text-slate-500">სიახლეების და განრიგის ტელეფონში სანახავად</p>
+          </div>
+        </div>
+        <div class="text-3xl text-slate-300 pr-2">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: SCHEDULE & COUNTDOWN -->
+    <section class="col-span-5 flex flex-col gap-5 h-full overflow-hidden" id="rightSection">
+      
+      <!-- CURRENT STATUS & COUNTDOWN CARD -->
+      <div class="bg-white rounded-3xl shadow-lg border border-slate-200/80 p-6 flex flex-col justify-between relative overflow-hidden">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider" id="statusLabel">სტატუსი</span>
+            <h3 class="text-lg font-extrabold text-slate-800" id="statusTitle">გაკვეთილის დასრულებამდე</h3>
+          </div>
+          <div class="px-3 py-1 rounded-full text-xs font-bold bg-main-light text-main-primary" id="targetBadge">
+            მიზანი: 09:25
+          </div>
+        </div>
+
+        <!-- COUNTDOWN DISPLAY -->
+        <div class="text-center my-2">
+          <div class="text-6xl font-black font-mono tracking-tight text-slate-800" id="countdownDisplay">00:00</div>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div class="w-full">
+          <div class="flex justify-between text-xs text-slate-500 font-semibold mb-1">
+            <span id="currentLessonText">მე-1 გაკვეთილი</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/60">
+            <div id="progressBar" class="progress-bar-fill h-full rounded-full" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIMELINE LIST -->
+      <div class="flex-1 bg-white rounded-3xl shadow-lg border border-slate-200/80 p-5 flex flex-col overflow-hidden">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fa-regular fa-clock text-main-primary text-lg"></i>
+          <h2 class="text-lg font-bold text-slate-800">გაკვეთილების განრიგი</h2>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar" id="scheduleList">
+          <!-- Dynamic schedule list rendering -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ADMIN MODAL -->
+  <div id="adminModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-100">
+      
+      <!-- MODAL HEADER -->
+      <div class="px-8 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-sliders text-main-primary text-xl"></i>
+          <h2 class="text-xl font-bold text-slate-800">ადმინისტრატორის პანელი</h2>
+        </div>
+        <button onclick="toggleAdminModal()" class="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- MODAL BODY (SCROLLABLE) -->
+      <div class="flex-1 p-8 overflow-y-auto space-y-8 custom-scrollbar">
+
+        <!-- 1. LAYOUT & COLOR THEME -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">1. დიზაინი & განლაგება</h3>
+          <div class="grid grid-cols-2 gap-4">
+            
+            <!-- Layout Selector -->
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">განრიგის/სლაიდერის პოზიცია</label>
+              <select id="cfgLayout" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="slides-left">მარცხნივ სლაიდერი / მარჯვნივ განრიგი</option>
+                <option value="slides-right">მარცხნივ განრიგი / მარჯვნივ სლაიდერი</option>
+              </select>
+            </div>
+
+            <!-- Theme Selector -->
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">ფერადი თემა</label>
+              <select id="cfgTheme" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="theme-emerald">Emerald Teal (ზურმუხტისფერი)</option>
+                <option value="theme-blue">Royal Blue (ლურჯი)</option>
+                <option value="theme-purple">Deep Purple (იასამნისფერი)</option>
+                <option value="theme-crimson">Crimson Red (წითელი)</option>
+                <option value="theme-dark">Modern Dark (მუქი თემა)</option>
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 2. SCHOOL DETAILS & LOGO -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">2. სკოლის მონაცემები & ლოგო</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">სკოლის დასახელება</label>
+              <input type="text" id="cfgSchoolTitle" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">ქვესათაური</label>
+              <input type="text" id="cfgSchoolSubtitle" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">ლოგო (URL ლინკი)</label>
+              <input type="text" id="cfgLogoUrl" placeholder="https://..." class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">ან ატვირთეთ ფაილი</label>
+              <input type="file" id="cfgLogoFile" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SOUND SETTINGS -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">3. ზარის ხმის პარამეტრები</h3>
+          <div class="grid grid-cols-3 gap-4 items-center">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">ზარის ხმა (ჩართვა)</label>
+              <select id="cfgSoundEnabled" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="true">კი (ჩართულია)</option>
+                <option value="false">არა (გამორთულია)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">მელოდიის ტიპი</label>
+              <select id="cfgSoundType" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="classic">კლასიკური ზარი</option>
+                <option value="chime">Gentle Chime</option>
+                <option value="digital">ციფრული Signal</option>
+              </select>
+            </div>
+            <div class="pt-7">
+              <button onclick="testBellSound()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-volume-high text-main-primary"></i> ხმის ტესტირება
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. SCHEDULE TIMES EDITING -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">4. გაკვეთილების დროები</h3>
+          <div class="space-y-3" id="adminScheduleInputs">
+            <!-- Dynamic Schedule Editors generated here -->
+          </div>
+        </div>
+
+        <!-- 5. SLIDES MANAGER -->
+        <div>
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">5. სლაიდების მართვა</h3>
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-bold text-slate-600">სლაიდის ხანგრძლივობა (წამი):</span>
+              <input type="number" id="cfgSlideDuration" min="3" max="60" value="7" class="w-20 border border-slate-300 rounded-lg px-3 py-1 text-sm font-bold text-center outline-none" />
+            </div>
+          </div>
+
+          <div class="space-y-4" id="adminSlidesList">
+            <!-- Dynamic Slide list for admin -->
+          </div>
+
+          <button onclick="addNewSlideAdmin()" class="mt-4 w-full py-3 border-2 border-dashed border-slate-300 hover:border-slate-400 text-slate-600 font-bold rounded-2xl transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus"></i> ახალი სლაიდის დამატება
+          </button>
+        </div>
+
+      </div>
+
+      <!-- MODAL FOOTER -->
+      <div class="px-8 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+        <button onclick="toggleAdminModal()" class="px-6 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100 transition">გაუქმება</button>
+        <button onclick="saveAdminSettings()" class="px-6 py-2.5 rounded-xl bg-main-primary text-white font-bold text-sm hover:opacity-90 transition shadow-md">შენახვა & განახლება</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JS LOGIC -->
+  <script>
+    // DEFAULT CONFIGURATION
+    const DEFAULT_CONFIG = {
+      schoolTitle: "1-ლი საჯარო სკოლა",
+      schoolSubtitle: "საინფორმაციო მონიტორი",
+      logoUrl: "",
+      layout: "slides-left",
+      theme: "theme-emerald",
+      soundEnabled: "true",
+      soundType: "classic",
+      slideDuration: 7,
+      schedule: [
+        { id: 1, name: "1-ლი გაკვეთილი", start: "08:45", end: "09:25" },
+        { id: 2, name: "მე-2 გაკვეთილი", start: "09:30", end: "10:10" },
+        { id: 3, name: "მე-3 გაკვეთილი", start: "10:15", end: "10:55" },
+        { id: 4, name: "მე-4 გაკვეთილი", start: "11:05", end: "11:45" },
+        { id: 5, name: "მე-5 გაკვეთილი", start: "11:50", end: "12:30" },
+        { id: 6, name: "მე-6 გაკვეთილი", start: "12:35", end: "13:15" },
+        { id: 7, name: "მე-7 გაკვეთილი", start: "13:20", end: "14:00" }
+      ],
+      slides: [
+        {
+          title: "მოგესალმებით სკოლაში!",
+          desc: "გისურვებთ წარმატებულ და ნაყოფიერ სასწავლო დღეს.",
+          img: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop"
+        },
+        {
+          title: "საინფორმაციო შეხვედრა",
+          desc: "პარასკევს, 15:00 საათზე გაიმართება მოსწავლეთა თვითმმართველობის კრება.",
+          img: "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop"
+        }
+      ]
+    };
+
+    let config = JSON.parse(localStorage.getItem('school_display_config')) || DEFAULT_CONFIG;
+    let currentSlideIndex = 0;
+    let slideTimer = null;
+    let lastRingStatus = null;
+
+    // INITIALIZE APP
+    function init() {
+      applyConfig();
+      renderScheduleList();
+      renderSlides();
+      startClock();
+      startSlideCarousel();
+    }
+
+    // APPLY CONFIGURATION TO UI
+    function applyConfig() {
+      document.getElementById('appBody').className = `bg-slate-100 h-screen w-screen flex flex-col ${config.theme} transition-colors duration-300`;
+      document.getElementById('schoolTitle').innerText = config.schoolTitle;
+      document.getElementById('schoolSubtitle').innerText = config.schoolSubtitle;
+
+      // Logo handling
+      const logoImg = document.getElementById('schoolLogoImg');
+      const logoFallback = document.getElementById('logoFallback');
+      if (config.logoUrl) {
+        logoImg.src = config.logoUrl;
+        logoImg.classList.remove('hidden');
+        logoFallback.classList.add('hidden');
+      } else {
+        logoImg.classList.add('hidden');
+        logoFallback.classList.remove('hidden');
+      }
+
+      // Layout directional toggle
+      const mainContainer = document.getElementById('mainContainer');
+      if (config.layout === 'slides-right') {
+        mainContainer.classList.add('flex-row-reverse');
+      } else {
+        mainContainer.classList.remove('flex-row-reverse');
+      }
+    }
+
+    // RENDER TIMELINE
+    function renderScheduleList() {
+      const listContainer = document.getElementById('scheduleList');
+      listContainer.innerHTML = '';
+
+      config.schedule.forEach((item) => {
+        const div = document.createElement('div');
+        div.id = `schedule-item-${item.id}`;
+        div.className = "flex justify-between items-center p-3.5 bg-slate-50 border border-slate-100 rounded-2xl transition-all duration-300";
+        div.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-xl bg-slate-200/70 text-slate-700 font-extrabold flex items-center justify-center text-sm">${item.id}</span>
+            <span class="font-bold text-slate-800 text-sm">${item.name}</span>
+          </div>
+          <span class="font-mono text-sm font-semibold text-slate-500">${item.start} - ${item.end}</span>
+        `;
+        listContainer.appendChild(div);
+      });
+    }
+
+    // REALTIME CLOCK & STATUS ENGINE
+    function startClock() {
+      updateTimeAndStatus();
+      setInterval(updateTimeAndStatus, 1000);
+    }
+
+    function timeToMinutes(timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function updateTimeAndStatus() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('headerClock').innerText = `${h}:${m}:${s}`;
+
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const currentSeconds = currentMinutes * 60 + now.getSeconds();
+
+      let activeLesson = null;
+      let nextLesson = null;
+      let breakPeriod = null;
+
+      for (let i = 0; i < config.schedule.length; i++) {
+        const item = config.schedule[i];
+        const startMin = timeToMinutes(item.start);
+        const endMin = timeToMinutes(item.end);
+
+        if (currentMinutes >= startMin && currentMinutes < endMin) {
+          activeLesson = { ...item, startMin, endMin };
+          break;
+        }
+
+        if (currentMinutes < startMin) {
+          nextLesson = { ...item, startMin, endMin };
+          if (i > 0) {
+            const prev = config.schedule[i - 1];
+            breakPeriod = { title: "შესვენება", endMin: startMin, targetTime: item.start };
+          }
+          break;
+        }
+      }
+
+      // RESET HIGHLIGHTS
+      config.schedule.forEach(item => {
+        const el = document.getElementById(`schedule-item-${item.id}`);
+        if (el) el.className = "flex justify-between items-center p-3.5 bg-slate-50 border border-slate-100 rounded-2xl transition-all duration-300";
+      });
+
+      const statusTitle = document.getElementById('statusTitle');
+      const targetBadge = document.getElementById('targetBadge');
+      const countdownDisplay = document.getElementById('countdownDisplay');
+      const progressBar = document.getElementById('progressBar');
+      const progressPercent = document.getElementById('progressPercent');
+      const currentLessonText = document.getElementById('currentLessonText');
+
+      if (activeLesson) {
+        // HIGHLIGHT ACTIVE LESSON
+        const activeEl = document.getElementById(`schedule-item-${activeLesson.id}`);
+        if (activeEl) activeEl.className = "flex justify-between items-center p-3.5 rounded-2xl active-card shadow-md";
+
+        statusTitle.innerText = "გაკვეთილის დასრულებამდე";
+        targetBadge.innerText = `მიზანი: ${activeLesson.end}`;
+        currentLessonText.innerText = activeLesson.name;
+
+        const totalSec = (activeLesson.endMin - activeLesson.startMin) * 60;
+        const elapsedSec = currentSeconds - (activeLesson.startMin * 60);
+        const remainingSec = Math.max(0, totalSec - elapsedSec);
+
+        const remM = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+        const remS = String(remainingSec % 60).padStart(2, '0');
+        countdownDisplay.innerText = `${remM}:${remS}`;
+
+        const pct = Math.min(100, Math.max(0, Math.floor((elapsedSec / totalSec) * 100)));
+        progressBar.style.width = `${pct}%`;
+        progressPercent.innerText = `${pct}%`;
+
+        checkBellRing(remainingSec);
+
+      } else if (breakPeriod) {
+        statusTitle.innerText = "შესვენება დასრულდება";
+        targetBadge.innerText = `მიზანი: ${breakPeriod.targetTime}`;
+        currentLessonText.innerText = "დიდი შესვენება";
+
+        const totalSec = 5 * 60; // Standard break calculation
+        const endSec = breakPeriod.endMin * 60;
+        const remainingSec = Math.max(0, endSec - currentSeconds);
+
+        const remM = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+        const remS = String(remainingSec % 60).padStart(2, '0');
+        countdownDisplay.innerText = `${remM}:${remS}`;
+
+        progressBar.style.width = `100%`;
+        progressPercent.innerText = `შესვენება`;
+
+        checkBellRing(remainingSec);
+
+      } else {
+        statusTitle.innerText = "სასწავლო დღე დასრულდა";
+        targetBadge.innerText = "დასვენება";
+        countdownDisplay.innerText = "00:00";
+        progressBar.style.width = "0%";
+        progressPercent.innerText = "0%";
+        currentLessonText.innerText = "გაკვეთილები არ მიმდინარეობს";
+      }
+    }
+
+    // AUDIO BELL SYSTEM
+    function checkBellRing(remainingSec) {
+      if (remainingSec === 0 && lastRingStatus !== 0) {
+        if (config.soundEnabled === "true") {
+          testBellSound();
+        }
+        lastRingStatus = 0;
+      } else if (remainingSec > 0) {
+        lastRingStatus = remainingSec;
+      }
+    }
+
+    function testBellSound() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const soundType = config.soundType || "classic";
+
+      if (soundType === "classic") {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 2.5);
+      } else if (soundType === "chime") {
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.2);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.2);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + idx * 0.2 + 1.5);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.2);
+          osc.stop(ctx.currentTime + idx * 0.2 + 1.5);
+        });
+      } else {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.2);
+      }
+    }
+
+    // CAROUSEL & SLIDE RENDERER
+    function renderSlides() {
+      const wrapper = document.getElementById('slidesWrapper');
+      const dotsContainer = document.getElementById('sliderDots');
+
+      wrapper.innerHTML = '';
+      dotsContainer.innerHTML = '';
+
+      config.slides.forEach((slide, idx) => {
+        // Slide item
+        const div = document.createElement('div');
+        div.className = `absolute inset-0 transition-opacity duration-700 flex flex-col ${idx === currentSlideIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`;
+        div.innerHTML = `
+          <div class="h-2/3 w-full relative overflow-hidden rounded-xl">
+            <img src="${slide.img}" class="w-full h-full object-cover" alt="Slide" />
+          </div>
+          <div class="p-4 flex-1 flex flex-col justify-center">
+            <h3 class="text-xl font-bold text-slate-800 mb-1">${slide.title}</h3>
+            <p class="text-slate-600 text-sm leading-relaxed">${slide.desc}</p>
+          </div>
+        `;
+        wrapper.appendChild(div);
+
+        // Dot item
+        const dot = document.createElement('button');
+        dot.className = `w-2.5 h-2.5 rounded-full transition-all ${idx === currentSlideIndex ? 'bg-main-primary w-6' : 'bg-slate-300'}`;
+        dot.onclick = () => goToSlide(idx);
+        dotsContainer.appendChild(dot);
+      });
+    }
+
+    function goToSlide(idx) {
+      currentSlideIndex = idx;
+      renderSlides();
+    }
+
+    function startSlideCarousel() {
+      if (slideTimer) clearInterval(slideTimer);
+      slideTimer = setInterval(() => {
+        if (config.slides.length > 0) {
+          currentSlideIndex = (currentSlideIndex + 1) % config.slides.length;
+          renderSlides();
+        }
+      }, (config.slideDuration || 7) * 1000);
+    }
+
+    // ADMIN MODAL & CONFIG EDITING
+    function toggleAdminModal() {
+      const modal = document.getElementById('adminModal');
+      const isHidden = modal.classList.contains('opacity-0');
+
+      if (isHidden) {
+        populateAdminFields();
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+      } else {
+        modal.classList.add('opacity-0', 'pointer-events-none');
+      }
+    }
+
+    function populateAdminFields() {
+      document.getElementById('cfgLayout').value = config.layout;
+      document.getElementById('cfgTheme').value = config.theme;
+      document.getElementById('cfgSchoolTitle').value = config.schoolTitle;
+      document.getElementById('cfgSchoolSubtitle').value = config.schoolSubtitle;
+      document.getElementById('cfgLogoUrl').value = config.logoUrl || '';
+      document.getElementById('cfgSoundEnabled').value = config.soundEnabled;
+      document.getElementById('cfgSoundType').value = config.soundType;
+      document.getElementById('cfgSlideDuration').value = config.slideDuration;
+
+      // Render schedule editor rows
+      const schContainer = document.getElementById('adminScheduleInputs');
+      schContainer.innerHTML = '';
+      config.schedule.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = "flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200";
+        row.innerHTML = `
+          <span class="font-bold text-slate-700 text-sm w-28">${item.name}:</span>
+          <input type="time" value="${item.start}" id="sch-start-${idx}" class="border border-slate-300 rounded-lg px-2 py-1 text-sm font-mono outline-none" />
+          <span class="text-slate-400 font-bold">-</span>
+          <input type="time" value="${item.end}" id="sch-end-${idx}" class="border border-slate-300 rounded-lg px-2 py-1 text-sm font-mono outline-none" />
+        `;
+        schContainer.appendChild(row);
+      });
+
+      // Render slides editor list
+      const slideContainer = document.getElementById('adminSlidesList');
+      slideContainer.innerHTML = '';
+      config.slides.forEach((slide, idx) => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 relative";
+        card.innerHTML = `
+          <button onclick="removeSlideAdmin(${idx})" class="absolute top-3 right-3 text-red-500 hover:text-red-700 text-sm font-bold">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+          <input type="text" value="${slide.title}" id="slide-title-${idx}" placeholder="სლაიდის სათაური" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-bold outline-none" />
+          <textarea id="slide-desc-${idx}" placeholder="აღწერა" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm outline-none resize-none h-16">${slide.desc}</textarea>
+          <input type="text" value="${slide.img}" id="slide-img-${idx}" placeholder="სურათის URL" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm outline-none font-mono" />
+        `;
+        slideContainer.appendChild(card);
+      });
+    }
+
+    function addNewSlideAdmin() {
+      config.slides.push({
+        title: "ახალი სიახლე",
+        desc: "ჩაწერეთ სიახლის ტექსტი აქ...",
+        img: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?q=80&w=1200&auto=format&fit=crop"
+      });
+      populateAdminFields();
+    }
+
+    function removeSlideAdmin(idx) {
+      config.slides.splice(idx, 1);
+      populateAdminFields();
+    }
+
+    // SAVE ADMIN CONFIG
+    function saveAdminSettings() {
+      config.layout = document.getElementById('cfgLayout').value;
+      config.theme = document.getElementById('cfgTheme').value;
+      config.schoolTitle = document.getElementById('cfgSchoolTitle').value;
+      config.schoolSubtitle = document.getElementById('cfgSchoolSubtitle').value;
+      config.soundEnabled = document.getElementById('cfgSoundEnabled').value;
+      config.soundType = document.getElementById('cfgSoundType').value;
+      config.slideDuration = parseInt(document.getElementById('cfgSlideDuration').value) || 7;
+
+      // Check file upload for logo
+      const fileInput = document.getElementById('cfgLogoFile');
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          config.logoUrl = e.target.result;
+          finishSave();
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        config.logoUrl = document.getElementById('cfgLogoUrl').value;
+        finishSave();
+      }
+    }
+
+    function finishSave() {
+      // Save schedule
+      config.schedule.forEach((item, idx) => {
+        item.start = document.getElementById(`sch-start-${idx}`).value;
+        item.end = document.getElementById(`sch-end-${idx}`).value;
+      });
+
+      // Save slides
+      config.slides.forEach((slide, idx) => {
+        slide.title = document.getElementById(`slide-title-${idx}`).value;
+        slide.desc = document.getElementById(`slide-desc-${idx}`).value;
+        slide.img = document.getElementById(`slide-img-${idx}`).value;
+      });
+
+      localStorage.setItem('school_display_config', JSON.stringify(config));
+      
+      applyConfig();
+      renderScheduleList();
+      renderSlides();
+      startSlideCarousel();
+      toggleAdminModal();
+    }
+
+    // RUN ON LOAD
+    window.onload = init;
+  </script>
+</body>
+</html>
